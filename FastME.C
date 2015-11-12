@@ -15,6 +15,9 @@
 ///:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
+///To print informations about DR functions running
+#define debug		false
+
 #include <iostream>
 #include <string>
 #include <ctime>
@@ -42,6 +45,7 @@ using namespace std;
 
 
 ///========== Compute Distance Between Events - Minimum Distance Method ===============
+///Takes the combination that gives minimum distance when >1 equals final states
 Double_t ComputeDR_MinDist(Int_t FS, Int_t DataParticleID[6], Float_t Data[6][3][2],
 			   Int_t McParticleID[6], Float_t MC[6][3][2]){
   
@@ -49,34 +53,8 @@ Double_t ComputeDR_MinDist(Int_t FS, Int_t DataParticleID[6], Float_t Data[6][3]
   Double_t dPt=0, dEta=0, dPhi=0;
   Double_t sum_dPt2=0, sum_dEta2=0, sum_dPhi2=0, event_distance=-1;
   
-  cout<<"\nFinal State: "<<FS<<endl;
-  ///2e2mu final state
-  if(FS == 2){
-
-    for(int idt=0; idt<6; idt++)
-    for(int imc=0; imc<6; imc++){
-      ///Avoid different Data-MC particles comparison
-      if(DataParticleID[idt] != McParticleID[imc]) continue;
-      cout<<"DataPos: "<<idt<<"  ID: "<<DataParticleID[idt]<<"  MCPos: "<<imc<<"   ID: "<<McParticleID[imc]<<endl;
-  
-      dPt  = (Data[idt][0][0]-MC[imc][0][0])/(scale_dPt*Data[idt][0][1]);
-      dEta = (Data[idt][1][0]-MC[imc][1][0])/(scale_dEta*Data[idt][1][1]);
-      if(use_dPhi == true){
-      dPhi = (Data[idt][2][0]-MC[imc][2][0]);
-      if(fabs(dPhi) > pi)
-	dPhi = (2*pi-fabs(dPhi))/(scale_dPhi*Data[idt][2][1]);
-      else
-	dPhi = dPhi/(scale_dPhi*Data[idt][2][1]);
-      }
-      sum_dPt2  += dPt*dPt;
-      sum_dEta2 += dEta*dEta;
-      if(use_dPhi == true) sum_dPhi2 += dPhi*dPhi;
-    }
-    
-  }
-    
-  ///Takes the combination that gives minimum distance in 4e and 4mu final states
-  else if(FS == 0 || FS == 1){
+  if( debug ) cout<<"\nFinal State: "<<FS<<endl;
+  if(FS == 0 || FS == 1 || FS == 2){
     
     int min_imc, vmin_imc[5] = {-1, -1, -1, -1, -1};
     for(int idt=0; idt<6; idt++){
@@ -84,7 +62,7 @@ Double_t ComputeDR_MinDist(Int_t FS, Int_t DataParticleID[6], Float_t Data[6][3]
       for(int imc=0; imc<6; imc++){
 	///Avoid different Data-MC particles comparison
 	if(DataParticleID[idt] != McParticleID[imc]) continue;
-	cout<<"DataPos: "<<idt<<"  ID: "<<DataParticleID[idt]<<"  MCPos: "<<imc<<"   ID: "<<McParticleID[imc]<<" >>> ";
+	if( debug ) cout<<"DataPos: "<<idt<<"  ID: "<<DataParticleID[idt]<<"  MCPos: "<<imc<<"   ID: "<<McParticleID[imc]<<" >>> ";
 
 	dPt  = (Data[idt][0][0]-MC[imc][0][0])/(scale_dPt*Data[idt][0][1]);
 	dEta = (Data[idt][1][0]-MC[imc][1][0])/(scale_dEta*Data[idt][1][1]);
@@ -97,7 +75,7 @@ Double_t ComputeDR_MinDist(Int_t FS, Int_t DataParticleID[6], Float_t Data[6][3]
 	}
 	
 	particles_distance = sqrt(dPt*dPt + dEta*dEta);
-	cout<<"particles_distance = "<<particles_distance<<endl;
+	if( debug ) cout<<"particles_distance = "<<particles_distance<<endl;
 	if(use_dPhi == true) particles_distance = sqrt(dPt*dPt + dEta*dEta + dPhi*dPhi);
 	if(particles_distance < min_particles_distance && imc != vmin_imc[0] && imc != vmin_imc[1]
 	   && imc != vmin_imc[2] && imc != vmin_imc[3] && imc != vmin_imc[4]){
@@ -108,7 +86,7 @@ Double_t ComputeDR_MinDist(Int_t FS, Int_t DataParticleID[6], Float_t Data[6][3]
       
       ///Monitor of chosen MCs to avoid object recounting
       vmin_imc[idt] = min_imc;
-      cout<<"Chosen->>  MCPos: "<<min_imc<<"   ID: "<<McParticleID[min_imc]<<endl;
+      if( debug ) cout<<"Chosen->>  MCPos: "<<min_imc<<"   ID: "<<McParticleID[min_imc]<<endl;
       
       dPt  = (Data[idt][0][0]-MC[min_imc][0][0])/(scale_dPt*Data[idt][0][1]);
       dEta = (Data[idt][1][0]-MC[min_imc][1][0])/(scale_dEta*Data[idt][1][1]);
@@ -127,7 +105,7 @@ Double_t ComputeDR_MinDist(Int_t FS, Int_t DataParticleID[6], Float_t Data[6][3]
   }
   
   else{
-    cout<<"[Error] Final State irregular passed to ComputeDR function!"<<endl;
+    cout<<"[Error] Irregular Final State passed to ComputeDR function!"<<endl;
     throw exception();
   }
 
@@ -149,12 +127,12 @@ Double_t ComputeDR_Media(Int_t FS, Int_t DataParticleID[6], Float_t Data[6][3][2
   Double_t dPt=0, dEta=0, dPhi=0;
   Double_t sum_dPt2=0, sum_dEta2=0, sum_dPhi2=0, event_distance=-1;
   
-  //cout<<"\nFS: "<<FS<<endl;
+  if( debug ) cout<<"\nFS: "<<FS<<endl;
   for(int idt=0; idt<6; idt++)
   for(int imc=0; imc<6; imc++){
     ///Avoid different Data-MC particles comparison
     if(DataParticleID[idt] != McParticleID[imc]) continue;
-    //cout<<"DataPos: "<<idt<<"  ID: "<<DataParticleID[idt]<<"  MCPos: "<<imc<<"   ID: "<<McParticleID[imc]<<endl;
+    if( debug ) cout<<"DataPos: "<<idt<<"  ID: "<<DataParticleID[idt]<<"  MCPos: "<<imc<<"   ID: "<<McParticleID[imc]<<endl;
   
     if(FS == 2){
       
@@ -250,7 +228,7 @@ int FastME(){
   
   ///Flags to control final state usage
   ///(to use only one channel - combinations not implemented!)
-  bool fs4e 	= true;
+  bool fs4e 	= false;
   bool fs4u 	= false;
   bool fs2e2u 	= false;  
   
@@ -429,7 +407,7 @@ int FastME(){
   //ndata = 1;
   for(int i=0; i<ndata; i++){
     time(&delaied);
-    //if(i % (ndata/10) == 0 && i != 0) cout<<":: Remaining Data: "<<ndata-i<<"\t||Elapsed: "<<difftime(delaied,start)<<"s"<<endl;
+    if(i % (ndata/10) == 0 && i != 0) cout<<":: Remaining Data: "<<ndata-i<<"\t||Elapsed: "<<difftime(delaied,start)<<"s"<<endl;
     Data_Tree->GetEntry(i);
     
     //cout<<"\n\nDataFS: "<<DataFS<<endl;
