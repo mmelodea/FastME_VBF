@@ -22,6 +22,7 @@
 #include <string>
 #include <ctime>
 #include <exception>
+#include <vector>
 #include <TString.h>
 #include <TFile.h>
 #include <TTree.h>
@@ -41,74 +42,71 @@
 ///Flag to control dPhi use on event distance
 #define use_dPhi	false
 
+///Parameters on Event Matrix
+#define nObjs		6
+#define nProp		3
+#define nVals		2
+
 using namespace std;
+
 
 
 ///========== Compute Distance Between Events - Minimum Distance Method ===============
 ///Takes the combination that gives minimum distance when >1 equals final states
-Double_t ComputeDR_MinDist(Int_t FS, Int_t DataParticleID[6], Float_t Data[6][3][2],
-			   Int_t McParticleID[6], Float_t MC[6][3][2]){
+Double_t ComputeDR_MinDist(Int_t FS, Int_t DataParticleID[nObjs], Float_t Data[nObjs][nProp][nVals],
+			   Int_t McParticleID[nObjs], Float_t MC[nObjs][nProp][nVals]){
   
   Double_t particles_distance, min_particles_distance;
   Double_t dPt=0, dEta=0, dPhi=0;
   Double_t sum_dPt2=0, sum_dEta2=0, sum_dPhi2=0, event_distance=-1;
   
   if( debug ) cout<<"\nFinal State: "<<FS<<endl;
-  if(FS == 0 || FS == 1 || FS == 2){
-    
-    int min_imc, vmin_imc[5] = {-1, -1, -1, -1, -1};
-    for(int idt=0; idt<6; idt++){
-      min_imc = -1, particles_distance = -1; min_particles_distance = 1.E15;
-      for(int imc=0; imc<6; imc++){
-	///Avoid different Data-MC particles comparison
-	if(DataParticleID[idt] != McParticleID[imc]) continue;
-	if( debug ) cout<<"DataPos: "<<idt<<"  ID: "<<DataParticleID[idt]<<"  MCPos: "<<imc<<"   ID: "<<McParticleID[imc]<<" >>> ";
+  int min_imc, vmin_imc[6] = {-1,-1,-1,-1,-1,-1};
+  for(int idt=0; idt<nObjs; idt++){
+    min_imc = -1, particles_distance = -1; min_particles_distance = 1.E15;
+    for(int imc=0; imc<nObjs; imc++){
+      ///Avoid different Data-MC particles comparison
+      if(DataParticleID[idt] != McParticleID[imc]) continue;
+      if( debug ) cout<<"DataPos: "<<idt<<"  ID: "<<DataParticleID[idt]<<"  MCPos: "<<imc<<"   ID: "<<McParticleID[imc]<<" >>> ";
 
-	dPt  = (Data[idt][0][0]-MC[imc][0][0])/(scale_dPt*Data[idt][0][1]);
-	dEta = (Data[idt][1][0]-MC[imc][1][0])/(scale_dEta*Data[idt][1][1]);
-	if(use_dPhi == true){
-	dPhi = (Data[idt][2][0]-MC[imc][2][0]);
+      dPt  = (Data[idt][0][0]-MC[imc][0][0])/(scale_dPt*Data[idt][0][1]);
+      dEta = (Data[idt][1][0]-MC[imc][1][0])/(scale_dEta*Data[idt][1][1]);
+      if(use_dPhi == true){
+        dPhi = (Data[idt][2][0]-MC[imc][2][0]);
 	if(fabs(dPhi) > pi)
 	  dPhi = (2*pi-fabs(dPhi))/(scale_dPhi*Data[idt][2][1]);
 	else
 	  dPhi = dPhi/(scale_dPhi*Data[idt][2][1]);
-	}
-	
-	particles_distance = sqrt(dPt*dPt + dEta*dEta);
-	if( debug ) cout<<"particles_distance = "<<particles_distance<<endl;
-	if(use_dPhi == true) particles_distance = sqrt(dPt*dPt + dEta*dEta + dPhi*dPhi);
-	if(particles_distance < min_particles_distance && imc != vmin_imc[0] && imc != vmin_imc[1]
-	   && imc != vmin_imc[2] && imc != vmin_imc[3] && imc != vmin_imc[4]){
-	  min_imc = imc;
-	  min_particles_distance = particles_distance;
-	}
       }
+	
+      particles_distance = sqrt(dPt*dPt + dEta*dEta);
+      if( debug ) cout<<"particles_distance = "<<particles_distance<<endl;
+      if(use_dPhi == true) particles_distance = sqrt(dPt*dPt + dEta*dEta + dPhi*dPhi);
+      if(particles_distance < min_particles_distance && imc != vmin_imc[0] && imc != vmin_imc[1]
+         && imc != vmin_imc[2] && imc != vmin_imc[3] && imc != vmin_imc[4]){
+	min_imc = imc;
+	min_particles_distance = particles_distance;
+      }
+    }
       
-      ///Monitor of chosen MCs to avoid object recounting
-      vmin_imc[idt] = min_imc;
-      if( debug ) cout<<"Chosen->>  MCPos: "<<min_imc<<"   ID: "<<McParticleID[min_imc]<<endl;
+    ///Monitor of chosen MCs to avoid object recounting
+    vmin_imc[idt] = min_imc;
+    if( debug ) cout<<"Chosen->>  MCPos: "<<min_imc<<"   ID: "<<McParticleID[min_imc]<<endl;
       
-      dPt  = (Data[idt][0][0]-MC[min_imc][0][0])/(scale_dPt*Data[idt][0][1]);
-      dEta = (Data[idt][1][0]-MC[min_imc][1][0])/(scale_dEta*Data[idt][1][1]);
-      if(use_dPhi == true){
+    dPt  = (Data[idt][0][0]-MC[min_imc][0][0])/(scale_dPt*Data[idt][0][1]);
+    dEta = (Data[idt][1][0]-MC[min_imc][1][0])/(scale_dEta*Data[idt][1][1]);
+    if(use_dPhi == true){
       dPhi = (Data[idt][2][0]-MC[min_imc][2][0]);
       if(fabs(dPhi) > pi)
 	dPhi = (2*pi-fabs(dPhi))/(scale_dPhi*Data[idt][2][1]);
       else
 	dPhi = dPhi/(scale_dPhi*Data[idt][2][1]);
-      }
-      sum_dPt2  += dPt*dPt;
-      sum_dEta2 += dEta*dEta;
-      if(use_dPhi == true) sum_dPhi2 += dPhi*dPhi;
     }
+    sum_dPt2  += dPt*dPt;
+    sum_dEta2 += dEta*dEta;
+    if(use_dPhi == true) sum_dPhi2 += dPhi*dPhi;
+  }
     
-  }
-  
-  else{
-    cout<<"[Error] Irregular Final State passed to ComputeDR function!"<<endl;
-    throw exception();
-  }
-
   if(use_dPhi == false) event_distance = sqrt(sum_dPt2 + sum_dEta2);
   else event_distance = sqrt(sum_dPt2 + sum_dEta2 + sum_dPhi2);
   
@@ -121,15 +119,15 @@ Double_t ComputeDR_MinDist(Int_t FS, Int_t DataParticleID[6], Float_t Data[6][3]
 
 
 ///========== Compute Distance Between Data-MC Events - Media Method ++============================
-Double_t ComputeDR_Media(Int_t FS, Int_t DataParticleID[6], Float_t Data[6][3][2],
-			 Int_t McParticleID[6], Float_t MC[6][3][2]){
+Double_t ComputeDR_Media(Int_t FS, Int_t DataParticleID[nObjs], Float_t Data[nObjs][nProp][nVals],
+			 Int_t McParticleID[nObjs], Float_t MC[nObjs][nProp][nVals]){
   
   Double_t dPt=0, dEta=0, dPhi=0;
   Double_t sum_dPt2=0, sum_dEta2=0, sum_dPhi2=0, event_distance=-1;
   
   if( debug ) cout<<"\nFS: "<<FS<<endl;
-  for(int idt=0; idt<6; idt++)
-  for(int imc=0; imc<6; imc++){
+  for(int idt=0; idt<nObjs; idt++)
+  for(int imc=0; imc<nObjs; imc++){
     ///Avoid different Data-MC particles comparison
     if(DataParticleID[idt] != McParticleID[imc]) continue;
     if( debug ) cout<<"DataPos: "<<idt<<"  ID: "<<DataParticleID[idt]<<"  MCPos: "<<imc<<"   ID: "<<McParticleID[imc]<<endl;
@@ -243,16 +241,16 @@ int FastME(){
   TTree *MC_Bkg_Tree = (TTree*)fMC_Bkg->Get(Tree_Name);
   
   ///Creating the Data Tree
-  Int_t DataFS, DataID[6]; 
-  Float_t Data[6][3][2];
+  Int_t DataFS, DataID[nObjs]; 
+  Float_t Data[nObjs][nProp][nVals];
   Data_Tree->SetBranchAddress(Objs_Branch,&Data);
   Data_Tree->SetBranchAddress(FS_Branch,&DataFS);
   Data_Tree->SetBranchAddress(ID_Branch,&DataID);
   int ndata = Data_Tree->GetEntries();
   
   ///Creating the Signal Tree
-  Int_t MC_SIG_FS, MC_SIG_ID[6], MC_SIG_NTRIALS;
-  Float_t MC_SIG_WEIGHT, MC_SIG[6][3][2];
+  Int_t MC_SIG_FS, MC_SIG_ID[nObjs], MC_SIG_NTRIALS;
+  Float_t MC_SIG_WEIGHT, MC_SIG[nObjs][nProp][nVals];
   MC_Sig_Tree->SetBranchAddress(Objs_Branch,&MC_SIG);
   MC_Sig_Tree->SetBranchAddress(FS_Branch,&MC_SIG_FS);
   MC_Sig_Tree->SetBranchAddress(ID_Branch,&MC_SIG_ID);
@@ -263,8 +261,8 @@ int FastME(){
   int nsig = MC_Sig_Tree->GetEntries();
   
   ///Creating the Background Tree
-  Int_t MC_BKG_FS, MC_BKG_ID[6], MC_BKG_NTRIALS;
-  Float_t MC_BKG_WEIGHT, MC_BKG[6][3][2]; 
+  Int_t MC_BKG_FS, MC_BKG_ID[nObjs], MC_BKG_NTRIALS;
+  Float_t MC_BKG_WEIGHT, MC_BKG[nObjs][nProp][nVals]; 
   MC_Bkg_Tree->SetBranchAddress(Objs_Branch,&MC_BKG);
   MC_Bkg_Tree->SetBranchAddress(FS_Branch,&MC_BKG_FS);
   MC_Bkg_Tree->SetBranchAddress(ID_Branch,&MC_BKG_ID);
