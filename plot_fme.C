@@ -2,8 +2,8 @@
   ///To plot discriminant distributions
   
  
-  TFile *fsig = TFile::Open("SigLikeData_QCDbkg.root");
-  TFile *fbkg = TFile::Open("BkgLikeData_QCDbkg.root");
+  TFile *fsig = TFile::Open("TestingTimeSig.root");
+  TFile *fbkg = TFile::Open("TestingTimeBkg.root");
 
   TTree *tsig = (TTree*)fsig->Get("FastME_Results");
   TTree *tbkg = (TTree*)fbkg->Get("FastME_Results");
@@ -34,8 +34,8 @@
   if( tsig->GetEntries() != tbkg->GetEntries() ) cout<<"!!Different number of events!!"<<endl;
   int nevents = tsig->GetEntries();
   
-  Double_t cutoff;
-  const int discret = 100;
+  Double_t cutoff, integral=0;
+  const int discret = 10000;
   float TPR[discret], FPR[discret], TP, FP, TN, FN;
   for(int j=0; j<discret; j++){
     cutoff = j/float(discret);
@@ -50,10 +50,14 @@
     }
     TPR[j] = TP/float(TP + FN);
     FPR[j] = FP/float(FP + TN);
-    
+    if(j>0)
+     integral += fabs(FPR[j-1]-FPR[j])*TPR[j];
     //if(TPR[j] == 0.95 || TPR[j] == 0.90 || TPR[j] == 0.85 || TPR[j] == 0.80)
       //cout<<"Cutoff= "<<cutoff<<"   TPR= "<<TPR[j]<<"   FPR= "<<FPR[j]<<endl;
   }
+
+  cout<<"Area in the ROC plot: "<<integral<<endl;
+  
   TGraph *roc = new TGraph(discret,FPR,TPR);
   roc->SetMarkerStyle(4);
   roc->SetMarkerSize(0.9);
@@ -67,7 +71,8 @@
   
   TLegend *leg = new TLegend(0.2,0.75,0.5,0.85);
   leg->AddEntry(sig_psbD,"VBF Sig","l");
-  leg->AddEntry(bkg_psbD,"VBF QCD Bkg","l");
+  leg->AddEntry(bkg_psbD,"VBF EW Bkg","l");
+  //leg->AddEntry(bkg_psbD,"VBF QCD Bkg","l");
   leg->SetFillColor(0);
   leg->SetBorderSize(0);
   leg->SetTextSize(0.05);
@@ -82,7 +87,7 @@
   cv->cd(2);
   roc->Draw("AP");
   l1->Draw();
-
+  
  
 ///To plot Efficiency vs Purity
 /*

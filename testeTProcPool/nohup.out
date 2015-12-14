@@ -1,0 +1,69 @@
+
+Processing teste.C+...
+::: Starting Analysis with TProcPool :::
+:: Remaining Data: 9000
+:: Remaining Data: 9000
+:: Remaining Data: 9000
+:: Remaining Data: 8000
+:: Remaining Data: 8000
+:: Remaining Data: 8000
+:: Remaining Data: 7000
+:: Remaining Data: 7000
+:: Remaining Data: 7000
+:: Remaining Data: 6000
+
+Processing teste.C+...
+Info in <TUnixSystem::ACLiC>: creating shared library /afs/cern.ch/user/m/mmelodea/teste3/./teste_C.so
+:: Remaining Data: 6000
+:: Remaining Data: 6000
+:: Remaining Data: 5000
+::: Starting Analysis with TProcPool :::
+:: Remaining Data: 5000
+:: Remaining Data: 5000
+:: Remaining Data: 4000
+:: Remaining Data: 9000
+:: Remaining Data: 9000
+:: Remaining Data: 9000
+:: Remaining Data: 4000
+:: Remaining Data: 4000
+:: Remaining Data: 3000
+:: Remaining Data: 8000
+:: Remaining Data: 8000
+:: Remaining Data: 8000
+:: Remaining Data: 3000
+:: Remaining Data: 3000
+:: Remaining Data: 7000
+:: Remaining Data: 7000
+:: Remaining Data: 7000
+:: Remaining Data: 2000
+:: Remaining Data: 2000
+:: Remaining Data: 2000
+:: Remaining Data: 6000
+:: Remaining Data: 6000
+:: Remaining Data: 6000
+:: Remaining Data: 1000
+:: Remaining Data: 1000
+:: Remaining Data: 5000
+:: Remaining Data: 1000
+:: Remaining Data: 5000
+:: Remaining Data: 5000
+:: Remaining Data: 4000
+:: Remaining Data: 4000
+:::::::::: Process Finished ::::::::::::
+:: Time Consumed: 1.3min.
+::--------------------------------------
+
+:: Remaining Data: 4000
+:: Remaining Data: 3000
+:: Remaining Data: 3000
+:: Remaining Data: 3000
+:: Remaining Data: 2000
+:: Remaining Data: 2000
+:: Remaining Data: 2000
+:: Remaining Data: 1000
+:: Remaining Data: 1000
+:: Remaining Data: 1000
+:::::::::: Process Finished ::::::::::::
+:: Time Consumed: 1.23333min.
+::--------------------------------------
+
