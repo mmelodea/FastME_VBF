@@ -31,13 +31,8 @@
 #define scale_dEta	5.
 #define scale_dPhi	pi
 
-///Final state
-#define nObjs		6
-
-//#define nData			10
-//#define nMonteCarlo		10000
-
 using namespace std;
+
 
 ///========= Compute Discriminant Value ==========================================================
 ///Based on Distance
@@ -48,7 +43,14 @@ Double_t PsbD(Double_t min_dr_sig, Double_t min_dr_bkg){
 ///================================================================================================
 
 
-void FastME_ProcPool(string Data_Path, vector<string> MCs, Int_t N_DT, Int_t N_MC, TString out_name){
+///Parameters (from left to right):
+///1. Address to Data sample;
+///2. Vector with address of MC samples;
+///3. Number of Data events;
+///4. Number of MC samples (MCs vector size);
+///5. Number of final state particles;
+///6. Name of the output file to store FastME analysis results.
+void FastME_ProcPool(string Data_Path, vector<string> MCs, Int_t N_DT, Int_t N_MC, Int_t N_FSParticles, TString out_name){
   
   ///TProcPool declaration to objects to be analised
   auto workItem = [Data_Path,N_DT,N_MC](TTreeReader &tread) -> TObject* {
@@ -58,7 +60,7 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, Int_t N_DT, Int_t N_M
     mdists->SetDirectory(0);
     
     ///Addresses the MC branches to be used
-    TTreeReaderValue<Int_t>    McType(tread, "McType"); ///Id for Signal=0 and Background >0
+    TTreeReaderValue<Int_t>    McType(tread, "McType"); ///McType for Signal=0 and Background >0
     TTreeReaderArray<Int_t>    McId(tread, "ParticleId");
     TTreeReaderArray<Double_t> McPt(tread, "ParticlePt");
     TTreeReaderArray<Double_t> McEta(tread, "ParticleEta");
@@ -74,14 +76,14 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, Int_t N_DT, Int_t N_M
     ///Loop on Data events
     for(Int_t dt=0; dt<N_DT; dt++){
     
-      if(dt!= 0 && dt%1000 == 0) cout<<":: Remaining Data: "<<N_DT-dt<<endl;
+      if(dt!= 0 && dt%2000 == 0) cout<<":: Remaining Data: "<<N_DT-dt<<endl;
       refReader.SetEntry(dt); ///Move on Data loop
       Double_t min_distance = 1.E15, event_distance=-1;
       Int_t f_type=-1;
       Int_t nMonteCarlo = tread.GetEntries(true);
       
       for(Int_t mc=0; mc<nMonteCarlo; mc++){
-	tread.SetEntry(mc); ///Move on loop on MC
+	tread.SetEntry(mc); ///Move on MC loop
         
 	
       ///============================================================================================================
@@ -90,7 +92,7 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, Int_t N_DT, Int_t N_M
 
 	///Checks the final states
 	int dt_el= 0, dt_mu= 0, mc_el= 0, mc_mu= 0;
-	for(int u=0; u<nObjs; u++){
+	for(int u=0; u<N_FSParticles; u++){
 	  if(abs(DataId[u]) == 11) dt_el++;
 	  if(abs(DataId[u]) == 13) dt_mu++;
 	  if(abs(McId[u])   == 11) mc_el++;
@@ -107,12 +109,12 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, Int_t N_DT, Int_t N_M
 	vector<int> vmin_imc;
 	vmin_imc.clear();
 	
-	for(int idt=0; idt<nObjs; idt++){
+	for(int idt=0; idt<N_FSParticles; idt++){
 	  min_particles_distance = 1.E15;
 	  particles_distance = -1; 
 	  min_imc = -1; 
     
-	  for(int imc=0; imc<nObjs; imc++){
+	  for(int imc=0; imc<N_FSParticles; imc++){
 	    mc_approved = true;
 	    if(int(vmin_imc.size()) > 0)
 	    for(int g=0; g<int(vmin_imc.size()); g++)
@@ -188,8 +190,10 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, Int_t N_DT, Int_t N_M
   TH1D *hdisc = new TH1D("hdisc","",50,0,1);
   ///Compute discriminant from MDMCED
   Double_t min_dr_sig, min_dr_bkg;
+  cout<<":::::::: Computing discriminant ::::::::"<<endl;
   for(Int_t data=0; data<N_DT; data++)
     for(Int_t mcs=1; mcs<N_MC; mcs++)
+      ///		   Signal minimum distances	      Background minimum distances
       hdisc->Fill( PsbD(mdists2->GetBinContent(data+1,1), mdists2->GetBinContent(data+1,mcs+1)) );
 
   hdisc->Write();
