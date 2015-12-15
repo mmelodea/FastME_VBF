@@ -164,7 +164,7 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
       
       ///Stores the minimum distances found
       mdists->Fill(dt,f_type,min_distance);
-      cout<<"dt: "<<dt<<"\tf_type: "<<f_type<<"\tmin_distance: "<<min_distance<<endl;
+      if( debug ) cout<<"dt: "<<dt<<"\tf_type: "<<f_type<<"\tmin_distance: "<<min_distance<<endl;
     }///End Data sample loop
     
     delete fData;
@@ -188,7 +188,7 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
   ///This allows one to get all TH2 member classes
   TFile *tmp = TFile::Open(out_name+".root","recreate");
   f_hist->Write();
-  //f_hist->Draw();
+  if( debug ) f_hist->Draw();
   TH2D *mdists2 = (TH2D*)tmp->Get("mdists");
   
   TH1D *hdisc = new TH1D("hdisc","",50,0,1);
@@ -200,7 +200,7 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
     for(Int_t mcs=1; mcs<N_MC; mcs++){
       ///		   Signal minimum distances	      Background minimum distances
       hdisc->Fill( PsbD(mdists2->GetBinContent(data+1,1), mdists2->GetBinContent(data+1,mcs+1)) );
-      cout<<"SigMin: "<< mdists2->GetBinContent(data+1,1) <<"\t\tBkgMin: "<< mdists2->GetBinContent(data+1,mcs+1) << endl;
+      if( debug ) cout<<"SigMin: "<< mdists2->GetBinContent(data+1,1) <<"\t\tBkgMin: "<< mdists2->GetBinContent(data+1,mcs+1) << endl;
     }
   }
   hdisc->Write();
