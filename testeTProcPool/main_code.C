@@ -9,6 +9,13 @@ void main_code(void){
   MCs.push_back("VBF_Samples/Vectors/VectorVBF_QED4_QCD0_BKG_FastME_2.root");
   MCs.push_back("VBF_Samples/Vectors/VectorVBF_QED2_QCD2_BKG_FastME_2.root");
   
-  FastME_ProcPool(Data_Path,MCs,10000,3,"fme_analysis_results_Bkg");
+  ///Parameters (from left to right):
+  ///1. Address to Data sample;
+  ///2. Vector with address of MC samples;
+  ///3. Number of Data events;
+  ///4. Number of MC samples (MCs vector size);
+  ///5. Number of final state particles;
+  ///6. Name of the output file to store FastME analysis results.
+  FastME_ProcPool(Data_Path,MCs,10000,3,6,"fme_analysis_results_Bkg");
   
 }
