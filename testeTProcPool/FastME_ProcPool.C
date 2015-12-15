@@ -50,13 +50,15 @@ Double_t PsbD(Double_t min_dr_sig, Double_t min_dr_bkg){
 ///4. Number of MC samples (MCs vector size);
 ///5. Number of final state particles;
 ///6. Name of the output file to store FastME analysis results.
-void FastME_ProcPool(string Data_Path, vector<string> MCs, Int_t N_DT, Int_t N_MC, Int_t N_FSParticles, TString out_name){
+void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, const Int_t N_MC, const Int_t N_FSParticles, TString out_name){
   
   ///TProcPool declaration to objects to be analised
-  auto workItem = [Data_Path,N_DT,N_MC](TTreeReader &tread) -> TObject* {
+  auto workItem = [Data_Path,N_DT,N_MC,N_FSParticles](TTreeReader &tread) -> TObject* {
     
     ///Defines 2D histogram to stores minimum distances
-    TH2D *mdists = new TH2D("mdists","",N_DT,0,N_DT,N_MC,0,N_MC);
+    TH2D *mdists = new TH2D("mdists","Minimum Data-MC distances found",N_DT,0,N_DT,N_MC,0,N_MC);
+    mdists->GetXaxis()->SetTitle("Data Events");
+    mdists->GetYaxis()->SetTitle("MC Types (0-1:Sig, 1-n:Bkg)");
     mdists->SetDirectory(0);
     
     ///Addresses the MC branches to be used
@@ -162,6 +164,7 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, Int_t N_DT, Int_t N_M
       
       ///Stores the minimum distances found
       mdists->Fill(dt,f_type,min_distance);
+      cout<<"dt: "<<dt<<"\tf_type: "<<f_type<<"\tmin_distance: "<<min_distance<<endl;
     }///End Data sample loop
     
     delete fData;
@@ -185,17 +188,21 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, Int_t N_DT, Int_t N_M
   ///This allows one to get all TH2 member classes
   TFile *tmp = TFile::Open(out_name+".root","recreate");
   f_hist->Write();
+  //f_hist->Draw();
   TH2D *mdists2 = (TH2D*)tmp->Get("mdists");
   
   TH1D *hdisc = new TH1D("hdisc","",50,0,1);
   ///Compute discriminant from MDMCED
   Double_t min_dr_sig, min_dr_bkg;
   cout<<":::::::: Computing discriminant ::::::::"<<endl;
-  for(Int_t data=0; data<N_DT; data++)
-    for(Int_t mcs=1; mcs<N_MC; mcs++)
+  for(Int_t data=0; data<N_DT; data++){
+    if(data%500 == 0) cout<<"Remaining Data: "<<N_DT-data<<endl;
+    for(Int_t mcs=1; mcs<N_MC; mcs++){
       ///		   Signal minimum distances	      Background minimum distances
       hdisc->Fill( PsbD(mdists2->GetBinContent(data+1,1), mdists2->GetBinContent(data+1,mcs+1)) );
-
+      cout<<"SigMin: "<< mdists2->GetBinContent(data+1,1) <<"\t\tBkgMin: "<< mdists2->GetBinContent(data+1,mcs+1) << endl;
+    }
+  }
   hdisc->Write();
   tmp->Close();
   
