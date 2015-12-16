@@ -80,7 +80,7 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
     for(Int_t dt=0; dt<N_DT; dt++){
     
       if(dt!= 0 && dt%(N_DT/10) == 0){ 
-	cout<<":: Remaining Data: "<<N_DT-dt<<"\t\tElapsed Time: ";
+	cout<<":: [Remaining Data]: "<<N_DT-dt<<"\t\t[Elapsed Time]: ";
 	t2.Stop();
 	t2.Print();
 	t2.Continue();
@@ -178,11 +178,14 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
     return mdists;
   };
   
-  ///________________ For timming the process ___________________________
+  ///_____________________________ For timming the process ________________________________________________________
   TStopwatch t;
   t.Start();
-  cout<<":::::::: Starting Fast Matrix Element Analysis :::::::::"<<endl;
-  ///--------------------------------------------------------------------
+  cout<<"\n\n";
+  cout<<"=================================================================================================="<<endl;
+  cout<<"::::::::::::::::::::::::[ Starting Fast Matrix Element Analysis ]:::::::::::::::::::::::::::::::::"<<endl;
+  cout<<"=================================================================================================="<<endl;
+  ///--------------------------------------------------------------------------------------------------------------
 
   ///Calls analysis through TProcPool
   ///TObject returned of TTree type (but not all member classes are accessibles)
@@ -196,16 +199,17 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
   if( debug ) f_hist->Draw();
   TH2D *mdists2 = (TH2D*)tmp->Get("mdists");
 
-  ///________________ Compute discriminant from MDMCED __________________
-  t.Stop();
-  cout<<"Time to Make Analysis: ";t.Print();cout<<endl;
-  t.Continue();
-  cout<<":::::::::::::::: Computing discriminant ::::::::::::::::"<<endl;
-  ///--------------------------------------------------------------------
+  ///_______________________ Compute discriminant from MDMCED _____________________________________________________
+  cout<<":: [Time to Make Analysis]: "; t.Stop(); t.Print(); t.Reset(); t.Start();
+  cout<<"\n::::::::::::::::::::::::::::::::[ Computing discriminant ]::::::::::::::::::::::::::::::::::::::::"<<endl;
+  ///--------------------------------------------------------------------------------------------------------------
   TH1D *hdisc = new TH1D("hdisc","",50,0,1);
   Double_t min_dr_sig, min_dr_bkg;
   for(Int_t data=0; data<N_DT; data++){
-    if(data%(N_DT/10) == 0) cout<<"Remaining Data: "<<N_DT-data<<endl;
+    if(data%(N_DT/10) == 0){
+      cout<<":: [Remaining Data]: "<<N_DT-data<<"\t\t[Elapsed Time]: ";
+      t.Stop(); t.Print(); t.Continue();
+    }
     for(Int_t mcs=1; mcs<N_MC; mcs++){
       ///		   Signal minimum distances	      Background minimum distances
       hdisc->Fill( PsbD(mdists2->GetBinContent(data+1,1), mdists2->GetBinContent(data+1,mcs+1)) );
@@ -215,14 +219,11 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
   hdisc->Write();
   tmp->Close();
   
-  ///________________ Stoping timming ___________________________________
-  t.Stop();
-  cout<<"Time to Compute Discriminant: ";t.Print();cout<<endl;
-  t.Continue();
-  cout<<":::::::::::::::::: Process Finished ::::::::::::::::::::"<<endl;
-  cout<<":: Analysis Total Time: ";
-  t.Stop();
-  t.Print();
-  ///--------------------------------------------------------------------
+  ///________________________________ Stoping timming _____________________________________________________
+  cout<<":: [Time to Compute Discriminant]: "; t.Print();
+  cout<<"\n::::::::::::::::::::::::::::::::::::[ Process Finished ]::::::::::::::::::::::::::::::::::::::::::::"<<endl;
+  cout<<":: [Analysis Total Time]: "; t.Stop(); t.Print();
+  cout<<"::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n"<<endl;
+  ///------------------------------------------------------------------------------------------------------
 }
 ///====================================================================================================
