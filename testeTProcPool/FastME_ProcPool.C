@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <string>
-#include <ctime>
 #include <exception>
 #include <vector>
 #include <TString.h>
@@ -13,6 +12,7 @@
 #include <TH1.h>
 #include <TH2.h>
 #include <TCanvas.h>
+#include <TStopwatch.h>
 
 ///Headers to TProcPool
 #include <TTreeReader.h>
@@ -54,6 +54,7 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
   
   ///TProcPool declaration to objects to be analised
   auto workItem = [Data_Path,N_DT,N_MC,N_FSParticles](TTreeReader &tread) -> TObject* {
+    TStopwatch t2;
     
     ///Defines 2D histogram to stores minimum distances
     TH2D *mdists = new TH2D("mdists","Minimum Data-MC distances found",N_DT,0,N_DT,N_MC,0,N_MC);
@@ -78,7 +79,12 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
     ///Loop on Data events
     for(Int_t dt=0; dt<N_DT; dt++){
     
-      if(dt!= 0 && dt%2000 == 0) cout<<":: Remaining Data: "<<N_DT-dt<<endl;
+      if(dt!= 0 && dt%(N_DT/10) == 0){ 
+	cout<<":: Remaining Data: "<<N_DT-dt<<"\t\tElapsed Time: ";
+	t2.Stop();
+	t2.Print();
+	t2.Continue();
+      }
       refReader.SetEntry(dt); ///Move on Data loop
       Double_t min_distance = 1.E15, event_distance=-1;
       Int_t f_type=-1;
@@ -167,17 +173,16 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
       if( debug ) cout<<"dt: "<<dt<<"\tf_type: "<<f_type<<"\tmin_distance: "<<min_distance<<endl;
     }///End Data sample loop
     
+    t2.Stop();
     delete fData;
     return mdists;
   };
   
-  ///For timming the process
-  time_t start, stop, delaied;
-  double seconds, elapsed_time;
-  string unity = "s";
-  time(&start);
-  cout<<"::: Starting Analysis with TProcPool :::"<<endl;
-  ///----------------------------------------------------
+  ///________________ For timming the process ___________________________
+  TStopwatch t;
+  t.Start();
+  cout<<":::::::: Starting Fast Matrix Element Analysis :::::::::"<<endl;
+  ///--------------------------------------------------------------------
 
   ///Calls analysis through TProcPool
   ///TObject returned of TTree type (but not all member classes are accessibles)
@@ -190,13 +195,17 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
   f_hist->Write();
   if( debug ) f_hist->Draw();
   TH2D *mdists2 = (TH2D*)tmp->Get("mdists");
-  
+
+  ///________________ Compute discriminant from MDMCED __________________
+  t.Stop();
+  cout<<"Time to Make Analysis: ";t.Print();cout<<endl;
+  t.Continue();
+  cout<<":::::::::::::::: Computing discriminant ::::::::::::::::"<<endl;
+  ///--------------------------------------------------------------------
   TH1D *hdisc = new TH1D("hdisc","",50,0,1);
-  ///Compute discriminant from MDMCED
   Double_t min_dr_sig, min_dr_bkg;
-  cout<<":::::::: Computing discriminant ::::::::"<<endl;
   for(Int_t data=0; data<N_DT; data++){
-    if(data%500 == 0) cout<<"Remaining Data: "<<N_DT-data<<endl;
+    if(data%(N_DT/10) == 0) cout<<"Remaining Data: "<<N_DT-data<<endl;
     for(Int_t mcs=1; mcs<N_MC; mcs++){
       ///		   Signal minimum distances	      Background minimum distances
       hdisc->Fill( PsbD(mdists2->GetBinContent(data+1,1), mdists2->GetBinContent(data+1,mcs+1)) );
@@ -206,22 +215,14 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
   hdisc->Write();
   tmp->Close();
   
-  ///Stoping timming
-  time(&stop);
-  cout<<":::::::::: Process Finished ::::::::::::"<<endl;    
-  seconds = difftime(stop,start);
-  if(seconds < 60) elapsed_time = seconds;
-  if(seconds >= 60){
-    elapsed_time = seconds/60.;
-    unity = "min.";
-  }
-  if(seconds >= 3600){
-    elapsed_time = seconds/3600.;
-    unity = "h";
-  }
-  cout<<":: Time Consumed: "<<elapsed_time<<unity<<endl;
-  cout<<"::--------------------------------------\n"<<endl;
-  
-  
+  ///________________ Stoping timming ___________________________________
+  t.Stop();
+  cout<<"Time to Compute Discriminant: ";t.Print();cout<<endl;
+  t.Continue();
+  cout<<":::::::::::::::::: Process Finished ::::::::::::::::::::"<<endl;
+  cout<<":: Analysis Total Time: ";
+  t.Stop();
+  t.Print();
+  ///--------------------------------------------------------------------
 }
 ///====================================================================================================
