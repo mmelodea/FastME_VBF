@@ -48,9 +48,11 @@ Double_t PsbD(Double_t min_dr_sig, Double_t min_dr_bkg){
 ///2. Vector with address of MC samples;
 ///3. Number of Data events;
 ///4. Number of MC types (if all have different classification that is just vector size);
-///5. Number of final state particles;
-///6. Name of the output file to store FastME analysis results.
-void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, const Int_t N_TMC, const Int_t N_FSParticles, TString out_name){
+///5. Vector with name of each MC;
+///6. Number of final state particles;
+///7. Name of the output file to store FastME analysis results.
+void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, const Int_t N_TMC,
+		     vector<string> MC_Names, const Int_t N_FSParticles, TString out_name){
   
   ///TProcPool declaration to objects to be analised
   auto workItem = [Data_Path,N_DT,N_TMC,N_FSParticles](TTreeReader &tread) -> TObject* {
@@ -191,42 +193,51 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
   ///TObject returned of TTree type (but not all member classes are accessibles)
   UInt_t ncores = MCs.size();
   TProcPool workers(ncores);
-  auto f_hist = workers.ProcTree(MCs, workItem);
-  
-  ///This allows one to get all TH2 member classes
-  TFile *tmp = TFile::Open(out_name+".root","recreate");
-  f_hist->Write();
+  f_hist = (TH2D*)workers.ProcTree(MCs, workItem);
   if( debug ) f_hist->Draw();
-  TH2D *mdists2 = (TH2D*)tmp->Get("mdists");
+  
 
   ///_______________________ Compute discriminant from MDMCED _____________________________________________________
-  cout<<":: [Time to Make Analysis]: "; t.Stop(); t.Print(); t.Continue();
+  cout<<":: [Distance Computing Time]: "; t.Stop(); t.Print(); t.Continue();
   cout<<"\n::::::::::::::::::::::::::::::::[ Computing discriminant ]::::::::::::::::::::::::::::::::::::::::"<<endl;
   ///--------------------------------------------------------------------------------------------------------------
-  TH1D *hdisc = new TH1D("hdisc","",50,0,1);
+  Int_t Event;
+  Double_t PsbD_MinDist, PsbD_Media;
+  TTree *tree = new TTree("FastME","Fast Matrix Element Analysis Results");
+  tree->SetDirectory(0);
+  tree->Branch("Event",&Event,"Event/I");
+  tree->Branch("PsbD_MinDist",&PsbD_MinDist,"PsbD_MinDist/D");
+  tree->Branch("PsbD_Media",&PsbD_Media,"PsbD_Media/D");
   for(Int_t data=0; data<N_DT; data++){
-    if(data%(N_DT/10) == 0){
+    Event = data;
+    if(data%(N_DT/10) == 0)
       cout<<":: [Remaining Data]: "<<N_DT-data<<"\t\t[Elapsed Time]: ";
-      t.Stop(); t.Print(); t.Continue();
-    }
 
-    Double_t min_dr_sig = mdists2->GetBinContent(data+1,1);
+    Double_t min_dr_sig = f_hist->GetBinContent(data+1,1);
     Double_t min_dr_bkg = 1.E15;
     ///Needs to find minimum distance to MC
     for(Int_t mcs=1; mcs<N_TMC; mcs++)
-      if( mdists2->GetBinContent(data+1,mcs+1) < min_dr_bkg )
-	min_dr_bkg = mdists2->GetBinContent(data+1,mcs+1);
+      if( f_hist->GetBinContent(data+1,mcs+1) < min_dr_bkg )
+	min_dr_bkg = f_hist->GetBinContent(data+1,mcs+1);
 
-    hdisc->Fill( PsbD(min_dr_sig, min_dr_bkg) );
+    PsbD_MinDist = PsbD(min_dr_sig, min_dr_bkg);
+    PsbD_Media	 = PsbD(min_dr_sig, min_dr_bkg);
     if( debug ) cout<<"SigMin: "<< min_dr_sig <<"\t\tBkgMin: "<< min_dr_bkg << endl;
+    tree->Fill();
   }
-  hdisc->Write();
-  tmp->Close();
   
   ///________________________________ Stoping timming ________________________________________________________
   cout<<"\n::::::::::::::::::::::::::::::::::::[ Process Finished ]::::::::::::::::::::::::::::::::::::::::::::"<<endl;
   cout<<":: [Analysis Total Time]: "; t.Stop(); t.Print();
   cout<<"::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n"<<endl;
   ///---------------------------------------------------------------------------------------------------------
+
+  ///Saving FastME results
+  TFile *tmp = TFile::Open(out_name+".root","recreate");
+  f_hist->Write();
+  tree->Write();
+  tmp->Close();
+  
+
 }
 ///====================================================================================================
