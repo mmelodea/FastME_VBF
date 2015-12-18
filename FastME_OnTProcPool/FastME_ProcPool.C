@@ -46,24 +46,27 @@ Double_t PsbD(Double_t min_dr_sig, Double_t min_dr_bkg){
 ///Parameters (from left to right):
 ///1. Address to Data sample;
 ///2. Vector with address of MC samples;
-///3. Number of Data events;
-///4. Number of MC types (if all have different classification that is just vector size);
-///5. Vector with name of each MC;
-///6. Number of final state particles;
-///7. Name of the output file to store FastME analysis results.
-void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, const Int_t N_TMC,
-		     vector<string> MC_Names, const Int_t N_FSParticles, TString out_name){
+///3. Vector with name of each MC;
+///4. Number of final state particles;
+///5. Number of cores to be used;
+///6. Name of the output file to store FastME analysis results.
+void FastME_ProcPool(string Data_Path, vector<string> MCs, vector<string> MC_Names,
+		     Int_t N_FSParticles, UInt_t N_Cores, TString out_name){
   
-  ///TProcPool declaration to objects to be analised
-  auto workItem = [Data_Path,N_DT,N_TMC,N_FSParticles](TTreeReader &tread) -> TObject* {
+  ///Getting some numbers
+  Int_t N_MCT = MCs.size();
+  TFile *fData = TFile::Open((TString)Data_Path);
+  TTreeReader tmpReader("VBF",fData);
+  Int_t nData = tmpReader.GetEntries(true);
+
+  ///TProcPool declaration to objects to be analised  
+  auto workItem = [fData, nData, N_MCT, N_FSParticles](TTreeReader &tread) -> TObject* {
     TStopwatch t2;
-    
+        
     ///Defines 2D histogram to stores minimum distances
-    TH2D *mdists = new TH2D("mdists","Minimum Data-MC distances found",N_DT,0,N_DT,N_TMC,0,N_TMC);
-    mdists->GetXaxis()->SetTitle("Data Events");
-    mdists->GetYaxis()->SetTitle("MC Types (0-1:Sig, 1-n:Bkg)");
-    mdists->SetDirectory(0);
-    
+    TH2D *mdists = new TH2D("mdists","Minimum Data-MC distances found",nData,0,nData,N_MCT,0,N_MCT);
+    mdists->SetDirectory(0);    
+  
     ///Addresses the MC branches to be used
     TTreeReaderValue<Int_t>    McType(tread, "McType"); ///McType for Signal=0 and Background >0
     TTreeReaderArray<Int_t>    McId(tread, "ParticleId");
@@ -71,7 +74,6 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
     TTreeReaderArray<Double_t> McEta(tread, "ParticleEta");
     
     ///Addresses the Data branches to be used
-    TFile *fData = TFile::Open((TString)Data_Path);
     TTreeReader refReader("VBF",fData);
     TTreeReaderArray<Int_t>    DataId(refReader, "ParticleId");
     TTreeReaderArray<Double_t> DataPt(refReader, "ParticlePt");
@@ -79,10 +81,10 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
 
 
     ///Loop on Data events
-    for(Int_t dt=0; dt<N_DT; dt++){
+    for(Int_t dt=0; dt<nData; dt++){
     
-      if(dt!= 0 && dt%(N_DT/10) == 0){ 
-	cout<<":: [Remaining Data]: "<<N_DT-dt<<"\t\t[Elapsed Time]: ";
+      if(dt!= 0 && dt%(nData/10) == 0){ 
+	cout<<":: [Remaining Data]: "<<nData-dt<<"\t\t[Elapsed Time]: ";
 	t2.Stop();
 	t2.Print();
 	t2.Continue();
@@ -191,9 +193,11 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
 
   ///Calls analysis through TProcPool
   ///TObject returned of TTree type (but not all member classes are accessibles)
-  UInt_t ncores = MCs.size();
-  TProcPool workers(ncores);
-  f_hist = (TH2D*)workers.ProcTree(MCs, workItem);
+  TProcPool workers(N_Cores);
+  auto f_hist = (TH2D*)workers.ProcTree(MCs, workItem);
+  f_hist->GetXaxis()->SetTitle("Data Events");
+  for(int mcn=0; mcn<int(MC_Names.size()); mcn++)
+    f_hist->GetYaxis()->SetBinLabel(mcn+1,(TString)MC_Names[mcn]);
   if( debug ) f_hist->Draw();
   
 
@@ -208,20 +212,20 @@ void FastME_ProcPool(string Data_Path, vector<string> MCs, const Int_t N_DT, con
   tree->Branch("Event",&Event,"Event/I");
   tree->Branch("PsbD_MinDist",&PsbD_MinDist,"PsbD_MinDist/D");
   tree->Branch("PsbD_Media",&PsbD_Media,"PsbD_Media/D");
-  for(Int_t data=0; data<N_DT; data++){
+  for(Int_t data=0; data<nData; data++){
     Event = data;
-    if(data%(N_DT/10) == 0)
-      cout<<":: [Remaining Data]: "<<N_DT-data<<"\t\t[Elapsed Time]: ";
+    if(data%(nData/10) == 0)
+      cout<<":: [Remaining Data]: "<<nData-data<<endl;
 
     Double_t min_dr_sig = f_hist->GetBinContent(data+1,1);
     Double_t min_dr_bkg = 1.E15;
     ///Needs to find minimum distance to MC
-    for(Int_t mcs=1; mcs<N_TMC; mcs++)
+    for(Int_t mcs=1; mcs<N_MCT; mcs++)
       if( f_hist->GetBinContent(data+1,mcs+1) < min_dr_bkg )
 	min_dr_bkg = f_hist->GetBinContent(data+1,mcs+1);
 
     PsbD_MinDist = PsbD(min_dr_sig, min_dr_bkg);
-    PsbD_Media	 = PsbD(min_dr_sig, min_dr_bkg);
+    //PsbD_Media	 = PsbD(min_dr_sig, min_dr_bkg);
     if( debug ) cout<<"SigMin: "<< min_dr_sig <<"\t\tBkgMin: "<< min_dr_bkg << endl;
     tree->Fill();
   }
