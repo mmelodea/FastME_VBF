@@ -15,29 +15,53 @@
   c1->cd(2);
   h2bkg->Draw("Colz");
   
+  Double_t GSigPsbDistance, GBkgPsbDistance;
+  vector<Double_t> *SigPsbDistance, *BkgPsbDistance;
+  TTree *tsig = (TTree*)fsig->Get("FastME");
+  TTree *tbkg = (TTree*)fbkg->Get("FastME");
+  tsig->SetBranchAddress("G_PsbD_MinDist",&GSigPsbDistance);
+  tsig->SetBranchAddress("PsbD_MinDist",&SigPsbDistance);
+  tbkg->SetBranchAddress("G_PsbD_MinDist",&GBkgPsbDistance);
+  tbkg->SetBranchAddress("PsbD_MinDist",&BkgPsbDistance);
+  if( tsig->GetEntries() != tbkg->GetEntries() ) cout<<"!!Different number of events!!"<<endl;
+  int nevents = tsig->GetEntries();
   
-  TH1D *h1sig = (TH1D*)fsig->Get("hdisc");
-  TH1D *h1bkg = (TH1D*)fbkg->Get("hdisc");
-  h1bkg->SetLineColor(kRed);
-  int n = h1sig->GetNbinsX();
-  float tpr[50], fpr[50];
-  for(int i=0; i<n; i++){
-    float fn=0, tn=0, fp=0, tp=0;
-    for(int j=0; j<n; j++){
-      if(j<i){
-	fn += h1sig->GetBinContent(j);
-	tn += h1bkg->GetBinContent(j);
-      }
-      if(j>i){
-	fp += h1bkg->GetBinContent(j);
-	tp += h1sig->GetBinContent(j);
-      }
+  TH1D *sig_psbD = new TH1D("sig_psbD","",50,0,1);
+  TH1D *bkg_psbD = new TH1D("bkg_psbD","",50,0,1); 
+  TH1D *bkg1_psbD = new TH1D("bkg1_psbD","",50,0,1); 
+  TH1D *bkg2_psbD = new TH1D("bkg2_psbD","",50,0,1); 
+  bkg_psbD->SetLineColor(kRed);
+  bkg1_psbD->SetLineColor(kBlue);
+  bkg2_psbD->SetLineColor(kGreen);
+  bkg_psbD->GetXaxis()->SetTitle("P_{SB}(Distance)");
+  bkg_psbD->GetYaxis()->SetTitle("Events/0.02 (Normalized)");
+  tsig->Project("sig_psbD","G_PsbD_MinDist");
+  tsig->Project("bkg1_psbD","PsbD_MinDist[0]");
+  tsig->Project("bkg2_psbD","PsbD_MinDist[1]");
+  tbkg->Project("bkg_psbD","G_PsbD_MinDist");
+  
+  Double_t cutoff, integral=0;
+  const int discret = 10000;
+  float TPR[discret], FPR[discret], TP, FP, TN, FN;
+  for(int j=0; j<discret; j++){
+    cutoff = j/float(discret);
+    TP = FP = TN = FN = 0;
+    for(int i=0; i<nevents; i++){
+      tsig->GetEntry(i);
+      if( GSigPsbDistance > cutoff ) TP++;
+      if( GSigPsbDistance < cutoff ) FN++;
+      tbkg->GetEntry(i);
+      if( GBkgPsbDistance > cutoff ) FP++;
+      if( GBkgPsbDistance < cutoff ) TN++;
     }
-    tpr[i] = tp/(tp+fn);
-    fpr[i] = fp/(fp+tn);
+    TPR[j] = TP/float(TP + FN);
+    FPR[j] = FP/float(FP + TN);
+    if(j>0)
+     integral += fabs(FPR[j-1]-FPR[j])*TPR[j];
   }
+  cout<<"Area in the ROC plot: "<<integral<<endl;
   
-  TGraph *roc = new TGraph(n,fpr,tpr);
+  TGraph *roc = new TGraph(discret,FPR,TPR);
   roc->SetMarkerStyle(4);
   roc->SetMarkerSize(0.9);
   roc->GetXaxis()->SetTitle("False Positive Rate");
@@ -49,8 +73,8 @@
   l1->SetLineStyle(2);
   
   TLegend *leg = new TLegend(0.2,0.75,0.5,0.85);
-  leg->AddEntry(h1sig,"VBF Sig","l");
-  leg->AddEntry(h1bkg,"VBF Bkg (EW + QCD)","l");
+  leg->AddEntry(sig_psbD,"VBF Sig","l");
+  leg->AddEntry(bkg_psbD,"VBF Bkg (EW + QCD)","l");
   leg->SetFillColor(0);
   leg->SetBorderSize(0);
   leg->SetTextSize(0.05);
@@ -59,8 +83,10 @@
   TCanvas *cv = new TCanvas();
   cv->Divide(2,1);
   cv->cd(1);
-  h1sig->DrawNormalized();
-  h1bkg->DrawNormalized("same");
+  sig_psbD->DrawNormalized();
+  bkg1_psbD->DrawNormalized("same");
+  bkg2_psbD->DrawNormalized("same");
+  bkg_psbD->DrawNormalized("same");
   leg->Draw();
   cv->cd(2);
   roc->Draw("AP");
